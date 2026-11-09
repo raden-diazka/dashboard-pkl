@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { Card } from '../components/ui'
 import { formatShort } from '../date'
+import { importedRange, importSchoolCSV, isSchoolJournalCSV } from '../importSchool'
 import { defaultData, downloadBackup, parseImport } from '../storage'
 import type { AppData, CloudAccount, Profile, Update } from '../types'
 
@@ -21,7 +22,9 @@ const SYNC_TEXT: Record<CloudAccount['syncState'], string> = {
 
 export default function Settings({ data, update, notify, cloud }: Props) {
   const fileInput = useRef<HTMLInputElement>(null)
+  const schoolInput = useRef<HTMLInputElement>(null)
   const [importError, setImportError] = useState('')
+  const [schoolError, setSchoolError] = useState('')
 
   function setField<K extends keyof Profile>(key: K, value: Profile[K]) {
     update((draft) => {
@@ -55,6 +58,47 @@ export default function Settings({ data, update, notify, cloud }: Props) {
       } finally {
         event.target.value = ''
       }
+    }
+    reader.readAsText(file)
+  }
+
+  function handleSchoolImport(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const text = String(reader.result)
+      if (!isSchoolJournalCSV(text)) {
+        setSchoolError('File CSV tidak dikenali. Pastikan ada kolom "Tanggal" dan "Deskripsi Kegiatan".')
+        event.target.value = ''
+        return
+      }
+
+      const result = importSchoolCSV(text, data)
+      if (result.journals.length === 0 && result.attendance.length === 0) {
+        setSchoolError(
+          result.duplicateRows > 0
+            ? 'Semua baris di file itu sudah ada di dashboard, tidak ada yang ditambahkan.'
+            : 'Tidak ada baris jurnal yang bisa dibaca dari file itu.',
+        )
+        event.target.value = ''
+        return
+      }
+
+      update((draft) => {
+        draft.journal.push(...result.journals)
+        result.attendance.forEach((record) => {
+          const existing = draft.attendance.find((item) => item.date === record.date)
+          if (existing) existing.status = record.status
+          else draft.attendance.push(record)
+        })
+      })
+
+      const range = importedRange(result.journals)
+      const journalText = range ? `${result.journals.length} jurnal (${range})` : '0 jurnal'
+      setSchoolError('')
+      notify(`${journalText} dan ${result.attendance.length} absensi diimpor.`)
+      event.target.value = ''
     }
     reader.readAsText(file)
   }
@@ -242,6 +286,29 @@ export default function Settings({ data, update, notify, cloud }: Props) {
             : 'Belum pernah membuat backup di perangkat ini.'}
         </p>
         {importError && <p className="error">{importError}</p>}
+      </Card>
+
+      <Card
+        title="Impor jurnal dari web sekolah"
+        subtitle="Unggah file CSV ekspor jurnal PKL. Kolom Tanggal, Status Kehadiran, dan Deskripsi Kegiatan yang dipakai."
+      >
+        <div className="backup-actions">
+          <button type="button" className="btn" onClick={() => schoolInput.current?.click()}>
+            Pilih file CSV jurnal
+          </button>
+          <input
+            ref={schoolInput}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden-input"
+            onChange={handleSchoolImport}
+          />
+        </div>
+        <p className="small muted note">
+          Jam kerja diisi 08:00–16:00 karena file sekolah tidak memuat jam; durasi tiap entri bisa
+          diubah di halaman Jurnal. Baris yang sudah pernah diimpor tidak digandakan.
+        </p>
+        {schoolError && <p className="error">{schoolError}</p>}
       </Card>
 
       <Card

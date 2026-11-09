@@ -32,7 +32,61 @@ export const DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sab
 
 export const WEEKDAYS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
 
+/** Semua tanggal dan jam aplikasi memakai zona waktu Indonesia Barat (UTC+7). */
+export const WIB_TIME_ZONE = 'Asia/Jakarta'
+export const WIB_LABEL = 'WIB'
+
 const pad = (value: number) => String(value).padStart(2, '0')
+
+type WibParts = {
+  year: number
+  month: number
+  day: number
+  hour: number
+  minute: number
+  second: number
+}
+
+const wibFormatter = new Intl.DateTimeFormat('en-GB', {
+  timeZone: WIB_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hourCycle: 'h23',
+})
+
+/**
+ * Tanggal dan jam saat ini di WIB, bukan zona waktu perangkat.
+ * Dengan begitu jam 00:30 di Jakarta tetap tercatat sebagai hari yang sama,
+ * walaupun perangkat disetel ke zona lain.
+ */
+export function nowWIB(): WibParts {
+  const parts = wibFormatter.formatToParts(new Date())
+  const pick = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0)
+  return {
+    year: pick('year'),
+    month: pick('month'),
+    day: pick('day'),
+    hour: pick('hour'),
+    minute: pick('minute'),
+    second: pick('second'),
+  }
+}
+
+/** Jam WIB dalam format 24 jam, misal "14:05". */
+export function nowTimeLabel(): string {
+  const now = nowWIB()
+  return `${pad(now.hour)}:${pad(now.minute)}`
+}
+
+/** Jam WIB lengkap dengan detik, misal "14:05:09". */
+export function nowClockLabel(): string {
+  const now = nowWIB()
+  return `${pad(now.hour)}:${pad(now.minute)}:${pad(now.second)}`
+}
 
 export function toISODate(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
@@ -43,8 +97,10 @@ export function parseISODate(iso: string): Date {
   return new Date(year || 2000, (month || 1) - 1, day || 1)
 }
 
+/** Tanggal hari ini menurut WIB (Asia/Jakarta). */
 export function todayISO(): string {
-  return toISODate(new Date())
+  const now = nowWIB()
+  return `${now.year}-${pad(now.month)}-${pad(now.day)}`
 }
 
 export function addDays(iso: string, amount: number): string {
@@ -66,6 +122,24 @@ export function formatShort(iso: string): string {
 export function formatDayMonth(iso: string): string {
   const date = parseISODate(iso)
   return `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]}`
+}
+
+/** Senin–Jumat dianggap hari kerja PKL. */
+export function isWorkday(iso: string): boolean {
+  const day = parseISODate(iso).getDay()
+  return day >= 1 && day <= 5
+}
+
+/** Samakan penulisan jam jadi dua digit, misal "8:00" menjadi "08:00". */
+export function normalizeTime(time: string): string {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim())
+  if (!match) return time
+  return `${pad(Number(match[1]))}:${match[2]}`
+}
+
+/** Rentang jam 24 jam dengan label WIB, misal "08:00–16:00 WIB". */
+export function formatTimeRange(startTime: string, endTime: string): string {
+  return `${normalizeTime(startTime)}–${normalizeTime(endTime)} ${WIB_LABEL}`
 }
 
 export function monthKey(iso: string): string {
@@ -139,8 +213,9 @@ export function hoursDecimal(minutes: number): string {
   return (minutes / 60).toFixed(1).replace('.', ',')
 }
 
+/** Sapaan mengikuti jam WIB, bukan jam perangkat. */
 export function greeting(): string {
-  const hour = new Date().getHours()
+  const hour = nowWIB().hour
   if (hour < 11) return 'Selamat pagi'
   if (hour < 15) return 'Selamat siang'
   if (hour < 19) return 'Selamat sore'

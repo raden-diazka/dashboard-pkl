@@ -1,0 +1,309 @@
+/* ---------- Jam WIB di hero ---------- */
+
+.hero-clock {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #dbe6ff;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Pengingat ---------- */
+
+.reminders {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reminder {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.reminder-icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--accent);
+}
+
+.reminder-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.reminder-body strong {
+  display: block;
+  font-size: 13.5px;
+}
+
+.reminder-body p {
+  margin-top: 2px;
+  color: var(--ink-soft);
+}
+
+.reminder-action {
+  flex-shrink: 0;
+}
+
+.reminder-danger {
+  border-color: #f2c9c4;
+  background: #fdf3f2;
+}
+
+.reminder-danger .reminder-icon {
+  background: var(--danger);
+}
+
+.reminder-danger .reminder-body strong {
+  color: #a3281c;
+}
+
+.reminder-warn {
+  border-color: #f3ddb4;
+  background: #fff8e6;
+}
+
+.reminder-warn .reminder-icon {
+  background: var(--warn);
+}
+
+.reminder-warn .reminder-body strong {
+  color: #7a4a00;
+}
+
+.reminder-info {
+  background: #f2f6ff;
+  border-color: #d3dffb;
+}
+
+.reminder-info .reminder-icon {
+  background: var(--accent);
+}
+
+/* ---------- Kolom tinggi sama ---------- */
+
+.cols-even {
+  align-items: stretch;
+}
+
+.cols-even > .card {
+  display: flex;
+  flex-direction: column;
+}
+
+.task-card {
+  min-width: 0;
+}
+
+/* ---------- Slider tugas ---------- */
+
+.task-slider-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.task-slider {
+  display: flex;
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #fafbfc;
+}
+
+.task-slider::-webkit-scrollbar {
+  display: none;
+}
+
+.task-slider:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.task-slide {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  min-height: 108px;
+}
+
+.task-slide-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.task-slide-index {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.task-due {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eef1f6;
+  color: var(--ink-soft);
+}
+
+.task-due-today {
+  background: #fff1d6;
+  color: #7a4a00;
+}
+
+.task-due-late {
+  background: #fbe7e4;
+  color: #a3281c;
+}
+
+.task-slide-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.task-slide-meta {
+  margin-top: auto;
+}
+
+.task-slide-late .task-slide-title {
+  color: #a3281c;
+}
+
+.task-slider-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.task-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.task-dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #d5dbe6;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.task-dot.on {
+  background: var(--accent);
+  transform: scale(1.25);
+}
+
+.task-slider-nav .btn[disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ---------- Login: lihat kata sandi & petunjuk ---------- */
+
+.password-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrap input {
+  width: 100%;
+  padding-right: 92px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 8px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  background: #eef2fb;
+}
+
+.auth-hint {
+  margin-top: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f7f9fc;
+  border: 1px solid var(--line);
+}
+
+.auth-hint ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.auth-hint li + li {
+  margin-top: 3px;
+}
+
+@media (max-width: 620px) {
+  .reminder {
+    flex-wrap: wrap;
+  }
+
+  .reminder-action {
+    margin-left: 38px;
+  }
+
+  .task-slide {
+    padding: 12px 14px;
+  }
+}
+
+@media print {
+  .reminders {
+    display: none;
+  }
+}

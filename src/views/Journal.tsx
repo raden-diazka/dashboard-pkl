@@ -176,7 +176,7 @@ export default function Journal({ data, update, notify }: Props) {
               />
             </div>
             <div className="field">
-              <label htmlFor="journal-start">Jam mulai</label>
+              <label htmlFor="journal-start">Jam mulai (WIB)</label>
               <input
                 id="journal-start"
                 type="time"
@@ -185,7 +185,7 @@ export default function Journal({ data, update, notify }: Props) {
               />
             </div>
             <div className="field">
-              <label htmlFor="journal-end">Jam selesai</label>
+              <label htmlFor="journal-end">Jam selesai (WIB)</label>
               <input
                 id="journal-end"
                 type="time"

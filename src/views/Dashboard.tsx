@@ -1,4 +1,6 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Card, Empty, ProgressBar, Stat } from '../components/ui'
+import Reminders from '../components/Reminders'
 import {
   addDays,
   daysUntil,
@@ -6,14 +8,18 @@ import {
   formatDuration,
   formatLong,
   formatShort,
+  formatTimeRange,
   greeting,
   hoursDecimal,
   minutesBetween,
   monthKey,
+  nowClockLabel,
   startOfWeek,
   todayISO,
+  WIB_LABEL,
 } from '../date'
 import type { AppData, AttendanceStatus, TabId } from '../types'
+import '../dashboard-extra.css'
 
 type Props = {
   data: AppData
@@ -25,6 +31,15 @@ export default function Dashboard({ data, onNavigate, cloud = false }: Props) {
   const today = todayISO()
   const currentMonth = monthKey(today)
   const { profile } = data
+
+  const [clock, setClock] = useState(nowClockLabel)
+  const [slide, setSlide] = useState(0)
+  const sliderRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(nowClockLabel()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   const totalMinutes = data.journal.reduce(
     (sum, entry) => sum + minutesBetween(entry.startTime, entry.endTime),
@@ -51,7 +66,40 @@ export default function Dashboard({ data, onNavigate, cloud = false }: Props) {
   const recent = [...data.journal]
     .sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime))
     .slice(0, 4)
-  const pendingTasks = data.tasks.filter((task) => !task.done).slice(0, 4)
+
+  // Tugas aktif diurutkan: yang paling dekat tenggat lebih dulu, tanpa tenggat paling akhir.
+  const pendingTasks = useMemo(
+    () =>
+      data.tasks
+        .filter((task) => !task.done)
+        .sort((a, b) => {
+          if (a.due && b.due) return a.due.localeCompare(b.due)
+          if (a.due) return -1
+          if (b.due) return 1
+          return a.createdAt.localeCompare(b.createdAt)
+        }),
+    [data.tasks],
+  )
+
+  useEffect(() => {
+    if (slide > pendingTasks.length - 1) setSlide(0)
+  }, [pendingTasks.length, slide])
+
+  function goToSlide(index: number) {
+    const element = sliderRef.current
+    if (!element) return
+    const next = Math.max(0, Math.min(pendingTasks.length - 1, index))
+    element.scrollTo({ left: next * element.clientWidth, behavior: 'smooth' })
+    setSlide(next)
+  }
+
+  function handleSliderScroll() {
+    const element = sliderRef.current
+    if (!element) return
+    const next = Math.round(element.scrollLeft / element.clientWidth)
+    setSlide((previous) => (previous === next ? previous : next))
+  }
+
   const profileComplete = Boolean(profile.name && profile.company)
   const lastExport = data.lastExportAt ? data.lastExportAt.slice(0, 10) : null
   const backupStale =
@@ -71,6 +119,9 @@ export default function Dashboard({ data, onNavigate, cloud = false }: Props) {
           <p className="muted">
             {[profile.company, profile.department].filter(Boolean).join(' · ') ||
               'Lengkapi profil PKL-mu supaya laporan bisa dibuat otomatis.'}
+          </p>
+          <p className="hero-clock">
+            {formatLong(today)} · {clock} {WIB_LABEL}
           </p>
           <div className="hero-meta">
             {profile.school && <span>{profile.school}</span>}
@@ -97,6 +148,8 @@ export default function Dashboard({ data, onNavigate, cloud = false }: Props) {
           </span>
         </div>
       </section>
+
+      <Reminders data={data} onNavigate={onNavigate} />
 
       {backupStale && (
         <div className="notice no-print">
@@ -128,7 +181,7 @@ export default function Dashboard({ data, onNavigate, cloud = false }: Props) {
         <Stat label="Tugas" value={`${doneTasks}/${data.tasks.length}`} hint="Tugas selesai" />
       </div>
 
-      <div className="cols">
+      <div className="cols cols-even">
         <Card
           title="Catatan hari ini"
           subtitle={formatLong(today)}
@@ -150,9 +203,7 @@ export default function Dashboard({ data, onNavigate, cloud = false }: Props) {
                   <div className="item-main">
                     <p className="item-title">{entry.activity}</p>
                     <div className="item-meta">
-                      <span>
-                        {entry.startTime}–{entry.endTime}
-                      </span>
+                      <span>{formatTimeRange(entry.startTime, entry.endTime)}</span>
                       <span>{formatDuration(minutesBetween(entry.startTime, entry.endTime))}</span>
                       <span className={`badge badge-${entry.category}`}>{entry.category}</span>
                     </div>
@@ -166,6 +217,8 @@ export default function Dashboard({ data, onNavigate, cloud = false }: Props) {
 
         <Card
           title="Tugas berikutnya"
+          subtitle={pendingTasks.length > 0 ? `${pendingTasks.length} tugas aktif` : undefined}
+          className="task-card"
           actions={
             <button type="button" className="btn small" onClick={() => onNavigate('progres')}>
               Kelola
@@ -175,15 +228,81 @@ export default function Dashboard({ data, onNavigate, cloud = false }: Props) {
           {pendingTasks.length === 0 ? (
             <Empty title="Tidak ada tugas tertunda" hint="Tambahkan target kerja dari pembimbing di halaman Progres." />
           ) : (
-            <div className="list">
-              {pendingTasks.map((task) => (
-                <div key={task.id} className="item">
-                  <div className="item-main">
-                    <p className="item-title">{task.title}</p>
-                    {task.due && <p className="item-meta">Tenggat {formatDayMonth(task.due)}</p>}
+            <div className="task-slider-wrap">
+              <div
+                className="task-slider"
+                ref={sliderRef}
+                onScroll={handleSliderScroll}
+                role="group"
+                aria-label="Daftar tugas berikutnya"
+                tabIndex={0}
+              >
+                {pendingTasks.map((task, index) => {
+                  const due = task.due ? daysUntil(task.due) : null
+                  const late = due !== null && due < 0
+                  return (
+                    <article
+                      key={task.id}
+                      className={`task-slide ${late ? 'task-slide-late' : ''}`.trim()}
+                      aria-label={`Tugas ${index + 1} dari ${pendingTasks.length}`}
+                    >
+                      <div className="task-slide-top">
+                        <span className="task-slide-index">
+                          {index + 1}/{pendingTasks.length}
+                        </span>
+                        {task.due && (
+                          <span className={`task-due ${late ? 'task-due-late' : due === 0 ? 'task-due-today' : ''}`.trim()}>
+                            {late
+                              ? `Terlambat ${Math.abs(due ?? 0)} hari`
+                              : due === 0
+                                ? 'Jatuh tempo hari ini'
+                                : `${due} hari lagi`}
+                          </span>
+                        )}
+                      </div>
+                      <p className="task-slide-title">{task.title}</p>
+                      <p className="small muted task-slide-meta">
+                        {task.due ? `Tenggat ${formatLong(task.due)}` : 'Tanpa tenggat'}
+                      </p>
+                    </article>
+                  )
+                })}
+              </div>
+
+              {pendingTasks.length > 1 && (
+                <div className="task-slider-nav">
+                  <button
+                    type="button"
+                    className="btn small ghost"
+                    onClick={() => goToSlide(slide - 1)}
+                    disabled={slide === 0}
+                    aria-label="Tugas sebelumnya"
+                  >
+                    ←
+                  </button>
+                  <div className="task-dots">
+                    {pendingTasks.map((task, index) => (
+                      <button
+                        key={task.id}
+                        type="button"
+                        className={`task-dot ${index === slide ? 'on' : ''}`.trim()}
+                        onClick={() => goToSlide(index)}
+                        aria-label={`Ke tugas ${index + 1}`}
+                        aria-current={index === slide}
+                      />
+                    ))}
                   </div>
+                  <button
+                    type="button"
+                    className="btn small ghost"
+                    onClick={() => goToSlide(slide + 1)}
+                    disabled={slide === pendingTasks.length - 1}
+                    aria-label="Tugas berikutnya"
+                  >
+                    →
+                  </button>
                 </div>
-              ))}
+              )}
             </div>
           )}
         </Card>
@@ -215,9 +334,7 @@ export default function Dashboard({ data, onNavigate, cloud = false }: Props) {
                 {recent.map((entry) => (
                   <tr key={entry.id}>
                     <td>{formatShortDate(entry.date)}</td>
-                    <td>
-                      {entry.startTime}–{entry.endTime}
-                    </td>
+                    <td>{formatTimeRange(entry.startTime, entry.endTime)}</td>
                     <td>{entry.activity}</td>
                     <td className="num">{formatDuration(minutesBetween(entry.startTime, entry.endTime))}</td>
                   </tr>

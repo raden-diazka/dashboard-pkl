@@ -126,7 +126,7 @@ export default function Report({ data }: { data: AppData }) {
                     <tr>
                       <th>No</th>
                       <th>Tanggal</th>
-                      <th>Jam</th>
+                      <th>Jam (WIB)</th>
                       <th>Kegiatan</th>
                       <th>Hasil</th>
                       <th>Kendala</th>
