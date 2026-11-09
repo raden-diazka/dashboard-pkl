@@ -1,0 +1,75 @@
+name: Supabase keep-alive
+
+# Supabase (Free plan) menjeda proyek yang aktivitas database-nya terlalu sedikit selama
+# sekitar 7 hari. Workflow ini menjalankan satu query ringan ke tabel `profiles` dua kali
+# sehari supaya proyek tidak dianggap tidak aktif.
+#
+# Yang perlu disiapkan (sekali saja):
+#   GitHub → repo → Settings → Secrets and variables → Actions → New repository secret
+#     SUPABASE_URL      = https://xxxxxxxx.supabase.co
+#     SUPABASE_ANON_KEY = publishable key (sb_publishable_...) atau anon key
+#
+# Jadwal: 01:00 dan 13:00 UTC = 08:00 dan 20:00 WIB, setiap hari.
+# Dokumentasi Supabase menyebut "beberapa request ke database per hari" sebagai ambang yang
+# biasanya cukup, jadi jangan dikurangi menjadi sekali seminggu.
+
+on:
+  schedule:
+    - cron: '0 1 * * *'
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-keepalive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    name: Query ringan ke database
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Pastikan secret sudah diisi
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          missing=0
+          if [ -z "$SUPABASE_URL" ]; then
+            echo "::error::Secret SUPABASE_URL belum diisi (Settings → Secrets and variables → Actions)."
+            missing=1
+          fi
+          if [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::Secret SUPABASE_ANON_KEY belum diisi (Settings → Secrets and variables → Actions)."
+            missing=1
+          fi
+          [ "$missing" -eq 0 ] || exit 1
+          echo "Kedua secret tersedia."
+
+      - name: Baca satu baris dari tabel profiles
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          rm -f /tmp/response.json
+          code=$(curl -sS \
+            --retry 3 --retry-delay 10 --retry-connrefused --max-time 30 \
+            -o /tmp/response.json -w '%{http_code}' \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/rest/v1/profiles?select=user_id&limit=1") || code=000
+
+          echo "HTTP $code"
+          if [ -f /tmp/response.json ]; then
+            echo "Respons: $(cat /tmp/response.json)"
+          fi
+
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "::error::Query gagal (HTTP $code). Proyek mungkin sedang dijeda — buka dashboard Supabase, pilih proyek, lalu klik Restore/Resume project."
+            exit 1
+          fi
+
+          echo "Sukses: database Supabase menerima query."
