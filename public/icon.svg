@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Dashboard PKL">
+  <rect width="512" height="512" rx="112" fill="#2f5cf6" />
+  <rect x="112" y="140" width="288" height="232" rx="28" fill="#ffffff" />
+  <rect x="142" y="176" width="120" height="18" rx="9" fill="#2f5cf6" />
+  <rect x="142" y="212" width="200" height="14" rx="7" fill="#c7d2fe" />
+  <rect x="142" y="240" width="164" height="14" rx="7" fill="#c7d2fe" />
+  <rect x="142" y="286" width="64" height="52" rx="12" fill="#e0e7ff" />
+  <rect x="222" y="286" width="64" height="52" rx="12" fill="#e0e7ff" />
+  <rect x="302" y="286" width="64" height="52" rx="12" fill="#0f9d58" />
+</svg>
